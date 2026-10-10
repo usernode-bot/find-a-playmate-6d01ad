@@ -38,8 +38,10 @@ function timeParts(d) {
   const parts = new Intl.DateTimeFormat(LOCALE, { hour: 'numeric', minute: '2-digit', hour12: true })
     .formatToParts(d);
   const period = (parts.find((p) => p.type === 'dayPeriod') || {}).value || '';
+  // The locale's own literal before the day period ("7:00 PM") is a lone
+  // space; drop it or timeRange adds a second one ("7:00  to").
   const time = parts.filter((p) => p.type === 'hour' || p.type === 'minute' || p.type === 'literal')
-    .map((p) => p.value).join('');
+    .map((p) => p.value).join('').trim();
   return { time, period: period.toLowerCase() };
 }
 function timeRange(a, b) {
@@ -233,12 +235,11 @@ function gameCard(g, kind) {
   </button>`;
 }
 function skeletons(n) {
-  const one = (w) => `<div class="skeleton h-4 ${w}"></div>`;
   let out = '';
   for (let i = 0; i < n; i++) {
-    out += `<div class="game-card pointer-events-none" aria-hidden="true">
-      <div class="skeleton h-[44px] w-[72px] rounded"></div>
-      <div class="flex flex-col gap-2 pt-0.5">${one('w-3/4')}${one('w-1/2')}${one('w-2/3')}</div>
+    out += `<div class="grid grid-cols-[72px_1fr] gap-3 rounded-xl bg-raised p-3" aria-hidden="true">
+      <div class="skeleton h-[44px] w-[72px]"></div>
+      <div class="flex flex-col gap-2 pt-0.5"><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-4 w-1/2"></div></div>
     </div>`;
   }
   return out;
@@ -254,7 +255,7 @@ function renderHome() {
     html += '<p class="mb-5 rounded-lg bg-raised px-3 py-2 text-small text-muted">Staging demo: the games and players below are made up.</p>';
   }
   if (s.status === 'error') {
-    html += `<div class="state-error"><p class="text-body font-medium">Couldn't load games.</p>
+    html += `<div class="state-error mt-6"><p class="text-body font-medium">Couldn't load games.</p>
       <p class="text-small text-muted">Check your connection. Nothing you posted is lost.</p>
       <button class="btn-secondary mt-2" data-retry>Retry</button></div>`;
     $app.innerHTML = html;
@@ -262,8 +263,7 @@ function renderHome() {
   }
   const d = s.data;
   if (s.status === 'loading' || !d) {
-    html += `<h2 class="section-label">Your games</h2><div class="mb-6 flex flex-col gap-2">${skeletons(2)}</div>
-      <h2 class="section-label">Open games</h2><div class="flex flex-col gap-2">${skeletons(3)}</div>`;
+    html += `<div class="flex flex-col gap-2">${skeletons(4)}</div>`;
     $app.innerHTML = html;
     return;
   }
@@ -288,7 +288,7 @@ function renderHome() {
   if (d.open.length === 0) {
     html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No open games yet</p>
       <p class="text-small text-muted">Post one and fill your court.</p>
-      <button class="btn-primary mt-2" data-go="#/new">New game</button></div>`;
+      <button class="btn-secondary mt-2" data-go="#/new">New game</button></div>`;
   } else if (open.length === 0) {
     html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No ${esc(SKILL_WORD[state.filter].toLowerCase())} games open</p>
       <p class="text-small text-muted">Try another skill level.</p></div>`;
@@ -803,6 +803,9 @@ document.addEventListener('click', (e) => {
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 (async function boot() {
+  // Paint before the first fetch: the header and the skeleton cards render
+  // right away, so a slow or blocked /api/me never leaves a blank page.
+  render();
   try {
     const me = await api('/api/me');
     state.me = me.user;
@@ -811,6 +814,16 @@ document.addEventListener('click', (e) => {
   } catch (_) {
     state.me = null;
   }
-  render();
+  // Repaint whatever landed while /api/me was in flight: the home list
+  // (amounts need the currency, the demo line the demo flag) or a game
+  // screen (it shows organizer controls only to the viewer in state.me).
+  const h = location.hash || '#/';
+  if (h.startsWith('#/game/')) {
+    const id = Number.parseInt(h.slice(7), 10);
+    const cached = state.games.get(id);
+    if (cached && cached.status === 'ready') renderGameFromCache(id, cached);
+  } else if (h !== '#/new') {
+    renderHome();
+  }
 })();
 })();

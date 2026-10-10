@@ -136,12 +136,13 @@
     @apply bg-surface text-fg ring-1 ring-line;
   }
 
-  /* A number stepper (New game's players field). */
+  /* A number stepper (New game's players field): one control, the same
+     height and radius as the segmented controls, on the surface token. */
   .stepper {
-    @apply flex items-center gap-3;
+    @apply flex w-fit items-center gap-0.5 rounded-[10px] border border-line bg-surface p-0.5;
   }
   .stepper button {
-    @apply flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-fg
+    @apply flex h-11 w-11 items-center justify-center rounded-lg text-body text-fg
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
   }
   .stepper output {
