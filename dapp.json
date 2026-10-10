@@ -3,7 +3,49 @@
   "icon": {
     "emoji": "🏸"
   },
-  "secrets": [],
+  "secrets": [
+    {
+      "key": "CURRENCY",
+      "description": "ISO currency code for court fees, e.g. EUR. Leave empty to show plain numbers.",
+      "required": false,
+      "private": false
+    }
+  ],
+  "tests": [
+    {
+      "id": "games.browse",
+      "name": "Games screen with demo",
+      "path": "/?demo=1",
+      "expectSelector": ".game-card",
+      "visual": true,
+      "impact": [
+        "public/**",
+        "server.js",
+        "lib/**",
+        "styles/**",
+        "tailwind.config.js"
+      ],
+      "allowConsoleErrors": true
+    },
+    {
+      "name": "Games screen, plain",
+      "path": "/",
+      "expectSelector": "[data-list=\"open\"]",
+      "allowConsoleErrors": true
+    },
+    {
+      "name": "New game form",
+      "path": "/#/new",
+      "expectText": "Post game",
+      "allowConsoleErrors": true
+    }
+  ],
+  "inLoopCheckAuth": {
+    "path": "/api/local-login",
+    "body": {
+      "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InQxIiwidXNlcm5hbWUiOiJ0ZXN0X3VzZXIiLCJwdXIiOiJpZnJhbWUiLCJpc3MiOiJ1c2Vybm9kZSIsImF1ZCI6InVzZXJub2RlOmFwcDpsb2NhbHRlc3QiLCJleHAiOjIxMDY5Njc5NDIsImlhdCI6MTc5MTYwNzk0Mn0.MnGpHrJOOGz6tX26aOlumtS195fUMmF2718gBZzuXYGTL8kudIWBYICc3I5-qV1bLxaKdYdKMeH0NlTVJ7AmQmolck5U95TCyrL6UHWqa40HqbgfTURQZhXkLiPLOvqg4744LHnoHtrM-jw_2slaHjd23_oX0mUKEDb8wyKoLdc"
+    }
+  },
   "visibility": {
     "build": "public",
     "view": "public"

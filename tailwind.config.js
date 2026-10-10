@@ -50,11 +50,22 @@ module.exports = {
         fg: token('fg'), // text
         muted: token('muted'), // secondary text
         line: token('line'), // borders, dividers, skeletons
-        accent: token('accent'), // the one accent: the primary action
+        accent: token('accent'), // court green: the primary action, Paid
         'on-accent': token('on-accent'), // text on the accent
+        court: token('court'), // the drawn court's mat
+        'court-line': token('court-line'), // court lines and taken spots
+        shuttle: token('shuttle'), // shuttle yellow: you, wherever you appear
+        'on-shuttle': token('on-shuttle'), // text on shuttle yellow
+        due: token('due'), // amber: money still owed
         danger: token('danger'),
         'on-danger': token('on-danger'),
         focus: token('focus'), // the keyboard focus ring
+      },
+      // Headings (the app name, a game's venue) use the system rounded face
+      // where it exists; everything else the system face.
+      fontFamily: {
+        display: ['ui-rounded', '"SF Pro Rounded"', 'system-ui', 'sans-serif'],
+        sans: ['system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'sans-serif'],
       },
       // The type scale: four sizes, and nothing in between.
       fontSize: {
