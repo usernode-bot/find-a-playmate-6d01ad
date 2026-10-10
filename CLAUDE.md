@@ -60,32 +60,12 @@ the platform fixes the base commit, and none of this applies.
 
 ## Starter template
 
-The screen this app currently ships — the "Starter template" hero with
-the app's thumbnail tile and the plain-English note on how the app gets
-built (by asking Homeroom bot) — is placeholder content from the
-Homeroom starter template, not product intent.
-
-When the user asks for their first real feature, REPLACE the template
-screen rather than building alongside it:
-
-- remove the `usernode-starter-notice@1` block in `public/index.html`
-  (both sentinel comments and everything between them),
-- rewrite `README.md` to describe the actual app.
-
-Keep the `usernode-dev-console@1` forwarder `<script>` when rewriting the
-HTML — that block is platform infrastructure, not template content. So is
-the bridge `<script>`. The design kit is not placeholder either: build the
-real app with it, and fill in "## Design" below.
-
-The screen has a light and a dark look and follows the viewer's Homeroom
-theme, switching live when they change it: the theme `<script>` right after
-the bridge tag sets a `dark` class on `<html>`. Keep that script, and give
-everything you build both looks (the design kit's colour tokens carry both), unless one
-fixed look is the point of this app, like a game's own scene; then say so
-under "## Design" below. Unless a request asks for one, add
-no theme picker: the viewer's Homeroom setting is the control. "The
-platform's light/dark theme inside the app frame" in the platform
-conventions has the details.
+Replaced: the app's real screens (games list, game detail, new game form)
+now ship instead of the template hero, and `README.md` describes the real
+app. The `usernode-dev-console@1` forwarder `<script>`, the bridge
+`<script>` and the theme `<script>` in `public/index.html` are platform
+infrastructure — never remove them. The light and dark looks follow the
+viewer's Homeroom theme; no theme picker.
 
 If a rule below this line conflicts with the hosted conventions, the
 hosted conventions win. This file is **app-specific** — write down
@@ -97,24 +77,31 @@ tables you've marked private), etc.
 
 ## About Find a playmate
 
-Find badminton buddies and fill your court
-
-_(add a sentence or two more of product context here so Claude Code has a
-shared understanding of what this app is for)_
+Find badminton buddies and fill your court. One person posts a game session
+for a single city (venue, when, how long, skill level, players needed, court
+fee); others join until the court is full. The fee splits evenly among
+everyone playing, rounded up, organizer included, and the organizer marks
+players paid. After a game, players rate each other on punctuality,
+sportsmanship and skill match; averages stay hidden until 3 or more distinct
+people have rated.
 
 ## Design
 
-This app's look. The first real version fills in the blanks; every later
-change follows it, and updates it when a request changes the look on purpose.
+This app's look. The first real version filled these in; every later change
+follows it, and updates it when a request changes the look on purpose.
 
-- **Palette:** _(name the accent, any second colour and the neutrals, e.g.
-  "accent: tomato red; second: basil green; neutrals: warm greys")_
-- **Signature element:** _(the one thing on screen drawn from this app's
-  subject, which no other app would have)_
-- **Type scale:** `text-title`, `text-heading`, `text-body`, `text-small`
-  _(change their sizes in `tailwind.config.js` if you must, not their number)_
-- **One fixed look:** _(only for an app drawn as its own scene, such as a
-  game: which look, and why. Otherwise delete this line.)_
+- **Palette:** accent: court green (`accent`, and a slightly deeper `court`
+  for the drawn courts); second: shuttle yellow (`shuttle` — your own spot
+  on a court, and the "money" accent for what someone owes); neutrals: cool
+  greens/greys (`ground`, `surface`, `raised`, `fg`, `muted`, `line`).
+  Danger red for destructive actions, amber (`due`) for the money lines.
+- **Signature element:** every game is drawn as a top-down badminton court
+  (SVG: green floor, white lines, net across the middle) with one dot per
+  player — your dot is shuttle yellow, open spots are dashed. Big on the
+  game screen, small on every card.
+- **Type scale:** `text-title`, `text-heading`, `text-body`, `text-small`,
+  rounded display stack (`ui-rounded`, falling back to SF Pro Rounded /
+  system-ui) so headings feel like a sports scoreboard without a custom font.
 
 The kit is in `styles/tailwind-input.css`: colour tokens with a light and
 a dark value (named in `tailwind.config.js`), and a few components
@@ -139,6 +126,23 @@ Re-theme by changing the token values there, keeping every text pair at
 
 ## App-specific conventions
 
-_(optional — e.g. "all currency values stored as integer cents, not
-floats"; "the `posts` table is append-only"; "avoid adding new
-dependencies"; etc.)_
+- Fees are whole amounts in the venue's minor units (integer, no decimals),
+  stored as-is in `games.fee`; a player's share is `ceil(fee / n)` with n =
+  everyone playing including the organizer (`lib/rules.js: shareOf`).
+- Game times are stored as `timestamptz` from what the poster entered in
+  their device's timezone; the browser reports its zone and every time is
+  rendered in the viewer's own zone. Durations come from a fixed set
+  (1, 1.5, 2, 3 hours), never free-form.
+- `ratings` and `game_reports` are marked staging:private — they hold
+  per-person behaviour data about real users.
+- The staging demo (`lib/demo.js`, `?demo=1`) is written per signed-in
+  viewer once and re-anchored to today by shifting whole days, so changes
+  the viewer made (joins, paid flags, ratings) survive. Demo rows carry
+  `demo_owner` and a `demo_key`; every query filters on
+  `demo_owner IS NULL OR (demo-flag AND demo_owner = viewer)`.
+- A rating summary (averages by punctuality, sportsmanship, skill match)
+  is only shown once 3 or more distinct raters have rated that player
+  within the app's games; under 3, show "New player" instead of numbers.
+- Avoid adding new dependencies; the app uses the platform's native UI kit
+  (`unNative.menu/alert/toast/presentSheet/transition`) for menus, sheets
+  and toasts.
