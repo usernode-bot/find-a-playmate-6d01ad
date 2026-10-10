@@ -45,5 +45,9 @@
     "body": {
       "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InQxIiwidXNlcm5hbWUiOiJ0ZXN0X3VzZXIiLCJwdXIiOiJpZnJhbWUiLCJpc3MiOiJ1c2Vybm9kZSIsImF1ZCI6InVzZXJub2RlOmFwcDpsb2NhbHRlc3QiLCJleHAiOjIxMDY5Njc5NDIsImlhdCI6MTc5MTYwNzk0Mn0.MnGpHrJOOGz6tX26aOlumtS195fUMmF2718gBZzuXYGTL8kudIWBYICc3I5-qV1bLxaKdYdKMeH0NlTVJ7AmQmolck5U95TCyrL6UHWqa40HqbgfTURQZhXkLiPLOvqg4744LHnoHtrM-jw_2slaHjd23_oX0mUKEDb8wyKoLdc"
     }
+  },
+  "visibility": {
+    "build": "public",
+    "view": "public"
   }
 }
