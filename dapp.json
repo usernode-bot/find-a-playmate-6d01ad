@@ -1,6 +1,7 @@
 {
   "description": "Find badminton buddies and fill your court",
   "icon": {
+    "image": "brand/icon.png",
     "emoji": "🏸"
   },
   "secrets": [

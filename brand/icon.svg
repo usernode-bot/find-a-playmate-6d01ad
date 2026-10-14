@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Find a playmate app icon: two crossed rackets and a shuttlecock, Homeroom brand flat style -->
+  <rect width="1024" height="1024" fill="#000000"/>
+  <g transform="translate(0 53)">
+    <g fill="none" stroke="#FFFEEA" stroke-linecap="round" stroke-linejoin="round">
+      <!-- left racket: head upper-left, grip lower-right -->
+      <ellipse cx="307" cy="348" rx="100" ry="140" transform="rotate(-45 307 348)" stroke-width="46"/>
+      <path d="M407 446 L620 640" stroke-width="46"/>
+      <path d="M620 640 L740 772" stroke-width="82"/>
+      <!-- right racket: head upper-right, grip lower-left -->
+      <ellipse cx="717" cy="348" rx="100" ry="140" transform="rotate(45 717 348)" stroke-width="46"/>
+      <path d="M617 446 L404 640" stroke-width="46"/>
+      <path d="M404 640 L284 772" stroke-width="82"/>
+    </g>
+    <!-- shuttlecock between the heads, cork pointing down -->
+    <path d="M455 130 A80 80 0 0 1 569 130 L537 252 A35 35 0 0 1 487 252 Z" fill="#FFEE6F"/>
+    <circle cx="512" cy="288" r="40" fill="#FFFEEA"/>
+  </g>
+</svg>
