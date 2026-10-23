@@ -74,6 +74,18 @@ const dayHeading = (d) => {
   const n = daysBetween(now(), d);
   return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : dateLabel(d);
 };
+// Today, this weekend (the coming Saturday and Sunday) or no day limit, as
+// whole days in the viewer's own zone.
+function quickMatches(g, quick) {
+  const start = new Date(g.startsAt);
+  const n = daysBetween(now(), start);
+  if (quick === 'today') return n === 0;
+  if (quick === 'weekend') {
+    const day = start.getDay();
+    return (day === 0 || day === 6) && n >= 0 && n <= (7 - now().getDay()) % 7;
+  }
+  return true;
+}
 
 // ── The drawn court ───────────────────────────────────────────────────────
 // Spots alternate sides of the net, left first; a half's layout is fixed
@@ -178,11 +190,16 @@ async function api(path, opts = {}) {
 
 // ── State ─────────────────────────────────────────────────────────────────
 const FILTERS = ['all', 'beginner', 'intermediate', 'advanced'];
+// Each level chip leads with a dot in the level's court colour; All has none.
+const SKILL_DOT = { beginner: 'bg-accent', intermediate: 'bg-shuttle', advanced: 'bg-danger' };
+const QUICK = ['today', 'weekend', 'soonest'];
+const QUICK_WORD = { today: 'Today', weekend: 'This weekend', soonest: 'Soonest' };
 const state = {
   me: null,
   demo: false,
   home: { status: 'loading', data: null }, // loading | error | ready
   filter: FILTERS.includes(localStorage.getItem('fap.filter')) ? localStorage.getItem('fap.filter') : 'all',
+  quick: null, // quick filter for open games; memory only, not stored
   games: new Map(), // id -> {status, data} for game screens
 };
 
@@ -205,7 +222,7 @@ function metaLine(g, opts) {
   else if (opts.playing) bits.push('<span class="font-medium">Playing now</span>');
   else if (g.playerCount >= g.playersNeeded) bits.push('<span class="font-medium">Full</span>');
   else if (opts.openFee) bits.push(`<span>${g.fee === 0 ? 'Free' : `${esc(amount(g.shareFull))} each when full`}</span>`);
-  return `<p class="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-small tabular-nums"><span class="inline-flex items-center gap-1">${skillMeter(g.skill)}${SKILL_WORD[g.skill]}</span><span>${g.playerCount} of ${g.playersNeeded} players</span>${bits.join('')}</p>`;
+  return `<p class="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-small tabular-nums"><span class="inline-flex items-center gap-1">${skillMeter(g.skill)}${SKILL_WORD[g.skill]}</span><span>${g.playerCount} of ${g.playersNeeded} filled</span>${bits.join('')}</p>`;
 }
 function moneyStrip(g) {
   if (g.fee === 0) return '';
@@ -220,19 +237,27 @@ function moneyStrip(g) {
   const cls = right === "You've paid" || right === 'All paid' ? 'text-accent font-medium' : 'text-due font-medium';
   return `<div class="col-span-2 flex justify-between gap-2 border-t border-line pt-2 text-small"><span>${left}</span><span class="${cls}">${right}</span></div>`;
 }
-function gameCard(g, kind) {
+function gameCard(g, kind, withDay) {
   const playing = kind === 'mine' && !g.cancelled
     && new Date(g.startsAt).getTime() <= now().getTime();
-  const strip = kind === 'mine' ? moneyStrip(g) : '';
-  return `<button class="game-card" data-game="${g.id}">
-    ${courtSmall(g.playersNeeded, g.playerCount, g.viewerSpot)}
+  const start = new Date(g.startsAt), end = new Date(g.endsAt);
+  const when = kind === 'mine' ? whenLine(start, end, true)
+    : withDay ? `${dayHeading(start)}, ${timeRange(start, end)}`
+      : whenLine(start, end, false);
+  const facts = `${courtSmall(g.playersNeeded, g.playerCount, g.viewerSpot)}
     <div class="min-w-0">
       <p class="truncate text-body font-semibold leading-[22px]">${esc(g.venue)}</p>
-      <p class="text-small text-muted tabular-nums">${esc(whenLine(new Date(g.startsAt), new Date(g.endsAt), kind === 'mine'))}</p>
+      <p class="text-small text-muted tabular-nums">${esc(when)}</p>
       ${metaLine(g, { playing, openFee: kind === 'open' })}
-    </div>
-    ${strip}
-  </button>`;
+    </div>`;
+  if (kind === 'mine') {
+    return `<button class="game-card" data-game="${g.id}">${facts}${moneyStrip(g)}</button>`;
+  }
+  // An open game: the card opens it, its own Join button joins straight away.
+  return `<div class="game-card game-card-join">
+    <button class="game-card-tap" data-game="${g.id}">${facts}</button>
+    <button class="btn-primary self-center px-3.5 text-small" data-join-card="${g.id}" aria-label="Join, ${esc(g.venue)}">Join</button>
+  </div>`;
 }
 function skeletons(n) {
   let out = '';
@@ -247,9 +272,12 @@ function skeletons(n) {
 
 function renderHome() {
   const s = state.home;
-  let html = `<header class="flex h-16 items-center justify-between">
-    <div class="flex items-center gap-2 font-display text-heading text-fg"><span class="text-accent">${ICONS.mark}</span>Find a playmate</div>
-    <button class="btn-primary" data-go="#/new">${ICONS.plus}New game</button>
+  let html = `<header class="pb-6 pt-5">
+    <div class="flex items-start justify-between gap-3">
+      <h1 class="flex items-center gap-2 font-display text-title text-fg"><span class="text-accent">${ICONS.mark}</span>Find a playmate</h1>
+      <button class="btn-primary flex-none" data-go="#/new">${ICONS.plus}New game</button>
+    </div>
+    <p class="mt-1 text-body text-muted">Find players at your level and location</p>
   </header>`;
   if (state.demo) {
     html += '<p class="mb-5 rounded-lg bg-raised px-3 py-2 text-small text-muted">Staging demo: the games and players below are made up.</p>';
@@ -281,17 +309,30 @@ function renderHome() {
       + '</ul>';
   }
   html += '<h2 class="section-label">Open games</h2>';
-  html += `<div class="seg mb-4" role="group" aria-label="Skill level">`
-    + FILTERS.map((f) => `<button aria-pressed="${state.filter === f}" data-filter="${f}">${f === 'all' ? 'All' : SKILL_WORD[f]}</button>`).join('')
+  html += `<div class="chips mb-2" role="group" aria-label="Skill level">`
+    + FILTERS.map((f) => `<button class="chip" aria-pressed="${state.filter === f}" data-filter="${f}">${
+      f === 'all' ? 'All' : `<span class="chip-dot ${SKILL_DOT[f]}" aria-hidden="true"></span>${SKILL_WORD[f]}`
+    }</button>`).join('')
+    + `</div>
+    <div class="chips mb-4" role="group" aria-label="When">`
+    + QUICK.map((q) => `<button class="chip" aria-pressed="${state.quick === q}" data-quick="${q}">${QUICK_WORD[q]}</button>`).join('')
     + '</div>';
-  const open = d.open.filter((g) => state.filter === 'all' || g.skill === state.filter);
+  const open = d.open.filter((g) => (state.filter === 'all' || g.skill === state.filter)
+    && (!state.quick || quickMatches(g, state.quick)));
   if (d.open.length === 0) {
     html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No open games yet</p>
       <p class="text-small text-muted">Post one and fill your court.</p>
       <button class="btn-secondary mt-2" data-go="#/new">New game</button></div>`;
   } else if (open.length === 0) {
-    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No ${esc(SKILL_WORD[state.filter].toLowerCase())} games open</p>
-      <p class="text-small text-muted">Try another skill level.</p></div>`;
+    const level = state.filter === 'all' ? '' : ` ${SKILL_WORD[state.filter].toLowerCase()}`;
+    const when = state.quick === 'today' ? ' today'
+      : state.quick === 'weekend' ? ' this weekend' : ' open';
+    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No${level} games${when}</p>
+      <p class="text-small text-muted">${state.quick ? 'Try another level or quick filter.' : 'Try another level.'}</p></div>`;
+  } else if (state.quick === 'soonest') {
+    // One flat list, earliest first (the server already sorts by start time).
+    html += '<div class="flex flex-col gap-2" data-list="open">'
+      + open.map((g) => gameCard(g, 'open', true)).join('') + '</div>';
   } else {
     // Group by the viewer's own calendar day; soonest first.
     const groups = new Map();
@@ -791,8 +832,23 @@ document.addEventListener('click', (e) => {
   if (retry) { state.home.data = null; loadHome(); return; }
   const retryGame = e.target.closest('[data-retry-game]');
   if (retryGame) { state.games.delete(Number(retryGame.dataset.retryGame)); loadGame(Number(retryGame.dataset.retryGame)); return; }
+  const joinCard = e.target.closest('[data-join-card]');
+  if (joinCard) {
+    const id = Number(joinCard.dataset.joinCard);
+    joinCard.disabled = true;
+    go(`#/game/${id}`);
+    doJoin(id);
+    return;
+  }
   const card = e.target.closest('[data-game]');
   if (card) { go(`#/game/${card.dataset.game}`); return; }
+  const quick = e.target.closest('[data-quick]');
+  if (quick) {
+    const q = quick.dataset.quick;
+    state.quick = state.quick === q ? null : q;
+    renderHome();
+    return;
+  }
   const filter = e.target.closest('[data-filter]');
   if (filter) {
     state.filter = filter.dataset.filter;

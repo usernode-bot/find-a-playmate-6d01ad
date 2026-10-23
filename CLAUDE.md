@@ -99,6 +99,13 @@ follows it, and updates it when a request changes the look on purpose.
   (SVG: green floor, white lines, net across the middle) with one dot per
   player — your dot is shuttle yellow, open spots are dashed. Big on the
   game screen, small on every card.
+- **Header and filters:** the Games screen opens with the app name as
+  `text-title` and one muted subtitle line under it; New game is its one
+  filled button. Under "Open games" sit two rows of rounded `chip`s: level
+  chips carry a dot in the level's colour (court green Beginner, shuttle
+  yellow Intermediate, danger red Advanced), quick filters (Today, This
+  weekend, Soonest) carry none. The chosen chip fills court green with
+  `on-accent` text. Each open game's card carries its own Join button.
 - **Type scale:** `text-title`, `text-heading`, `text-body`, `text-small`,
   rounded display stack (`ui-rounded`, falling back to SF Pro Rounded /
   system-ui) so headings feel like a sports scoreboard without a custom font.
@@ -106,7 +113,8 @@ follows it, and updates it when a request changes the look on purpose.
 The kit is in `styles/tailwind-input.css`: colour tokens with a light and
 a dark value (named in `tailwind.config.js`), and a few components
 (`btn-primary`, `btn-secondary`, `field`, `list` and `list-row`,
-`card`, `section-label`, `skeleton`, `state-empty`, `state-error`).
+`card`, `section-label`, `chips` and `chip`, `skeleton`, `state-empty`,
+`state-error`).
 Re-theme by changing the token values there, keeping every text pair at
 4.5:1 or more in both looks.
 

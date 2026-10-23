@@ -117,10 +117,40 @@
     @apply grid w-full grid-cols-[72px_1fr] gap-3 rounded-xl border border-line bg-surface p-3 text-left
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
   }
+  /* An open game: the court and facts are one button that opens the game,
+     the card's own Join button sits beside them. */
+  .game-card-join {
+    @apply grid-cols-[72px_1fr_auto];
+  }
+  .game-card-tap {
+    @apply col-span-2 grid grid-cols-[72px_1fr] gap-3 rounded-lg text-left
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
+  }
 
   /* The label above a section: sentence case, never uppercase or tracked. */
   .section-label {
     @apply mb-2 px-1 text-small font-medium text-muted;
+  }
+
+  /* Level and quick filters: rounded chips on one wrapping row. A level
+     chip leads with a dot in that level's court colour; the chosen chip
+     fills court green, its ring keeping the dot visible on the fill. */
+  .chips {
+    @apply flex flex-wrap gap-2;
+  }
+  .chip {
+    @apply inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-small font-medium text-fg
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2
+      focus-visible:ring-offset-ground;
+  }
+  .chip[aria-pressed='true'] {
+    @apply border-accent bg-accent text-on-accent;
+  }
+  .chip-dot {
+    @apply h-2 w-2 flex-none rounded-full;
+  }
+  .chip[aria-pressed='true'] .chip-dot {
+    @apply ring-2 ring-on-accent;
   }
 
   /* Segmented control: <div class="seg" role="group"> of <button
