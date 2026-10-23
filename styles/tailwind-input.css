@@ -41,6 +41,8 @@
     --danger: 185 28 28;
     --on-danger: 255 255 255;
     --focus: 21 140 86;        /* the keyboard focus ring */
+    --chip: 20 83 52;          /* a selected filter chip, deep court green */
+    --on-chip: 255 255 255;    /* text on a selected chip */
   }
   .dark {
     --ground: 15 19 17;
@@ -59,6 +61,8 @@
     --danger: 248 113 113;
     --on-danger: 69 10 10;
     --focus: 110 220 155;
+    --chip: 22 92 58;
+    --on-chip: 255 255 255;
   }
   /* el.hidden = true hides an element even when a class gives it a display
      (flex, the components below). */
@@ -111,11 +115,42 @@
     @apply rounded-xl border border-line bg-surface p-4;
   }
 
-  /* A game card: the drawn court on the left, the facts on the right,
-     and (on your own games) a money strip along the bottom. */
+  /* A game card: the time large, the venue under it and the drawn court
+     beside them; then the level, the filled spots and (on open games) Join,
+     or (on your own games) a money strip along the bottom. */
   .game-card {
-    @apply grid w-full grid-cols-[72px_1fr] gap-3 rounded-xl border border-line bg-surface p-3 text-left
-      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
+    @apply flex w-full cursor-pointer flex-col gap-3 rounded-xl border border-line bg-surface p-3 text-left;
+  }
+  .game-card [data-open] {
+    @apply rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
+  }
+
+  /* A filter chip: <button class="chip" aria-pressed>, round, 44 px tall.
+     The selected one is filled deep court green. */
+  .chip {
+    @apply inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-small
+      font-medium text-fg hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus
+      focus-visible:ring-offset-2 focus-visible:ring-offset-ground;
+  }
+  .chip[aria-pressed='true'] {
+    @apply border-chip bg-chip text-on-chip hover:bg-chip;
+  }
+  /* A row of chips that scrolls sideways on a narrow phone rather than
+     wrapping, running to the screen's edges. */
+  .chip-row {
+    @apply -mx-4 flex gap-2 overflow-x-auto px-4;
+    scrollbar-width: none;
+  }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip-row .chip { @apply flex-none; }
+
+  /* A skill level's dot: green beginner, yellow intermediate, red advanced.
+     On a selected chip it gets a ring so it reads on the deep green. */
+  .level-dot {
+    @apply inline-block h-2.5 w-2.5 flex-none rounded-full;
+  }
+  .chip[aria-pressed='true'] .level-dot {
+    box-shadow: 0 0 0 1.5px rgb(var(--on-chip));
   }
 
   /* The label above a section: sentence case, never uppercase or tracked. */
@@ -164,10 +199,6 @@
   .court-lg .t-in { fill: rgb(var(--court)); font: 600 15px system-ui, sans-serif; }
   .court-lg .t-me { fill: rgb(var(--on-shuttle)); font: 600 13px system-ui, sans-serif; }
   .court-lg .t-lbl { fill: rgb(var(--court-line)); font: 500 12px system-ui, sans-serif; }
-
-  /* The skill meter: three bars, one to three filled. */
-  .skill-meter .bar-on { fill: rgb(var(--fg)); }
-  .skill-meter .bar-off { fill: rgb(var(--line)); }
 
   /* An avatar: the player's initial; yours on shuttle yellow. */
   .avatar {
