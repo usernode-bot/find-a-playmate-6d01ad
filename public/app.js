@@ -276,12 +276,31 @@ function skeletons(n) {
   return out;
 }
 
+// A racket and a shuttlecock in soft court green, for the empty Games list.
+const EMPTY_ART = `<svg class="mb-2 text-accent" width="120" height="96" viewBox="0 0 120 96" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle cx="60" cy="50" r="44" fill="currentColor" fill-opacity="0.08" stroke="none"/>
+  <g transform="rotate(-35 46 40)">
+    <ellipse cx="46" cy="30" rx="16" ry="21" fill="currentColor" fill-opacity="0.12"/>
+    <path d="M38 13v34M46 9v42M54 13v34M31 22h30M30 30h32M31 38h30" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M46 51v8"/><path d="M46 59v22" stroke-width="5"/>
+  </g>
+  <g transform="rotate(25 88 56)">
+    <path d="M80 44l16 0 -3 18h-10z" fill="currentColor" fill-opacity="0.12"/>
+    <path d="M85 44l1 18M91 44l-1 18" stroke-width="1" stroke-opacity="0.55"/>
+    <circle cx="88" cy="66" r="5" fill="currentColor" fill-opacity="0.35"/>
+  </g>
+</svg>`;
+
 function renderHome() {
   const s = state.home;
+  const d = s.status === 'ready' ? s.data : null;
+  const open = d ? d.open.filter((g) => (state.filter === 'all' || g.skill === state.filter) && matchesWhen(g, state.when)) : [];
+  // The empty Games list carries its own New game button; show one at a time.
+  const emptyOpen = !!d && (d.open.length === 0 || (open.length === 0 && !state.when));
   let html = `<header class="pb-5">
     <div class="flex h-14 items-center justify-between">
       <span class="text-accent">${ICONS.mark}</span>
-      <button class="btn-secondary" data-go="#/new">${ICONS.plus}New game</button>
+      ${emptyOpen ? '' : `<button class="btn-secondary" data-go="#/new">${ICONS.plus}New game</button>`}
     </div>
     <h1 class="mt-1 font-display text-title text-fg">Find a playmate</h1>
     <p class="mt-1 text-body text-muted">Find players by level and location</p>
@@ -296,8 +315,7 @@ function renderHome() {
     $app.innerHTML = html;
     return;
   }
-  const d = s.data;
-  if (s.status === 'loading' || !d) {
+  if (!d) {
     html += `<div class="flex flex-col gap-2">${skeletons(4)}</div>`;
     $app.innerHTML = html;
     return;
@@ -322,20 +340,21 @@ function renderHome() {
   html += `<div class="chip-row mb-4" role="group" aria-label="When">`
     + WHEN.map(([k, label]) => `<button class="chip" aria-pressed="${state.when === k}" data-when="${k}">${label}</button>`).join('')
     + '</div>';
-  const open = d.open.filter((g) => (state.filter === 'all' || g.skill === state.filter) && matchesWhen(g, state.when));
-  if (d.open.length === 0) {
-    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No open games yet</p>
-      <p class="text-small text-muted">Post one and fill your court.</p>
-      <button class="btn-secondary mt-2" data-go="#/new">New game</button></div>`;
-  } else if (open.length === 0 && state.when) {
+  if (open.length === 0 && state.when && d.open.length > 0) {
     const whenWords = { today: 'today', weekend: 'this weekend', soon: 'in the next 24 hours' };
     const level = state.filter === 'all' ? '' : `${SKILL_WORD[state.filter].toLowerCase()} `;
     html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No ${esc(level)}games open ${whenWords[state.when]}</p>
       <p class="text-small text-muted">Try another day or level.</p>
       <button class="btn-secondary mt-2" data-clear-filters>Show all games</button></div>`;
-  } else if (open.length === 0) {
-    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No ${esc(SKILL_WORD[state.filter].toLowerCase())} games open</p>
-      <p class="text-small text-muted">Try another skill level.</p></div>`;
+  } else if (emptyOpen) {
+    const level = state.filter === 'all' ? '' : SKILL_WORD[state.filter].toLowerCase();
+    html += `<div class="state-empty" data-list="open" data-empty="${esc(state.filter)}">${EMPTY_ART}
+      <p class="text-body font-medium">${level ? `No ${esc(level)} games yet` : 'No open games yet'}</p>
+      <p class="text-small text-muted">Post one and fill your court.</p>
+      <div class="mt-2 flex flex-wrap justify-center gap-2">
+        <button class="btn-primary" data-go="#/new">${ICONS.plus}New game</button>
+        ${level ? '<button class="btn-secondary" data-filter="all">See all levels</button>' : ''}
+      </div></div>`;
   } else {
     // Group by the viewer's own calendar day; soonest first.
     const groups = new Map();
