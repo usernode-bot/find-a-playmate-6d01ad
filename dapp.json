@@ -35,6 +35,12 @@
       "allowConsoleErrors": true
     },
     {
+      "name": "Empty Games list offers New game",
+      "path": "/",
+      "expectSelector": "[data-empty] .btn-primary[data-go=\"#/new\"]",
+      "allowConsoleErrors": true
+    },
+    {
       "name": "New game form",
       "path": "/#/new",
       "expectText": "Post game",
