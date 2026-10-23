@@ -141,6 +141,7 @@ const ICONS = {
   back: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   more: '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
   mark: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="18" r="3"/><path d="M9.5 16.5 6 4h12l-3.5 12.5"/><path d="M10 4l1 12"/><path d="M14 4l-1 12"/><path d="M7.2 8.5h9.6"/></svg>',
+  racket: '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(-35 40 36)"><ellipse cx="40" cy="30" rx="17" ry="22" fill="currentColor" fill-opacity="0.12"/><path d="M32 12v36M40 8v44M48 12v36M24 22h32M23 30h34M24 38h32" stroke-width="1" stroke-opacity="0.55"/><path d="M40 52v14"/><path d="M40 66v18" stroke-width="6"/></g><circle cx="74" cy="78" r="5" fill="currentColor" fill-opacity="0.12"/><path d="M70 74 60 58h20l-6 16" fill="currentColor" fill-opacity="0.12"/><path d="M66 58l3 15M74 58l-1 15"/></svg>',
 };
 
 // ── API ───────────────────────────────────────────────────────────────────
@@ -247,9 +248,14 @@ function skeletons(n) {
 
 function renderHome() {
   const s = state.home;
+  const d = s.data;
+  const open = s.status === 'ready' && d
+    ? d.open.filter((g) => state.filter === 'all' || g.skill === state.filter)
+    : [];
+  const openEmpty = s.status === 'ready' && !!d && open.length === 0;
   let html = `<header class="flex h-16 items-center justify-between">
     <div class="flex items-center gap-2 font-display text-heading text-fg"><span class="text-accent">${ICONS.mark}</span>Find a playmate</div>
-    <button class="btn-primary" data-go="#/new">${ICONS.plus}New game</button>
+    ${openEmpty ? '' : `<button class="btn-primary" data-go="#/new">${ICONS.plus}New game</button>`}
   </header>`;
   if (state.demo) {
     html += '<p class="mb-5 rounded-lg bg-raised px-3 py-2 text-small text-muted">Staging demo: the games and players below are made up.</p>';
@@ -261,7 +267,6 @@ function renderHome() {
     $app.innerHTML = html;
     return;
   }
-  const d = s.data;
   if (s.status === 'loading' || !d) {
     html += `<div class="flex flex-col gap-2">${skeletons(4)}</div>`;
     $app.innerHTML = html;
@@ -284,14 +289,16 @@ function renderHome() {
   html += `<div class="seg mb-4" role="group" aria-label="Skill level">`
     + FILTERS.map((f) => `<button aria-pressed="${state.filter === f}" data-filter="${f}">${f === 'all' ? 'All' : SKILL_WORD[f]}</button>`).join('')
     + '</div>';
-  const open = d.open.filter((g) => state.filter === 'all' || g.skill === state.filter);
-  if (d.open.length === 0) {
-    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No open games yet</p>
+  if (openEmpty) {
+    const level = state.filter !== 'all';
+    html += `<div class="state-empty" data-list="open">
+      <span class="text-accent">${ICONS.racket}</span>
+      <p class="text-body font-medium">${level ? `No ${esc(SKILL_WORD[state.filter])} games open` : 'No open games yet'}</p>
       <p class="text-small text-muted">Post one and fill your court.</p>
-      <button class="btn-secondary mt-2" data-go="#/new">New game</button></div>`;
-  } else if (open.length === 0) {
-    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No ${esc(SKILL_WORD[state.filter].toLowerCase())} games open</p>
-      <p class="text-small text-muted">Try another skill level.</p></div>`;
+      <div class="mt-2 flex flex-wrap justify-center gap-2">
+        <button class="btn-primary" data-go="#/new">${ICONS.plus}New game</button>
+        ${level ? '<button class="btn-secondary" data-filter="all">See all levels</button>' : ''}
+      </div></div>`;
   } else {
     // Group by the viewer's own calendar day; soonest first.
     const groups = new Map();
