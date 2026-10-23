@@ -59,11 +59,6 @@ function relDay(d) {
   return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : '';
 }
 const dateLabel = (d) => d.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
-// "Today, 7:00 to 9:00 pm" or "8:00 to 10:00 am" (a day heading says the day).
-function whenLine(d1, d2, withDay) {
-  const rel = withDay ? relDay(d1) : '';
-  return rel ? `${rel}, ${timeRange(d1, d2)}` : timeRange(d1, d2);
-}
 // "Today, Sat 10 Oct, 7:00 to 9:00 pm" — a game's own screen.
 function fullWhen(d1, d2) {
   const rel = relDay(d1);
@@ -125,21 +120,17 @@ function courtBig(game, players) {
   return `<svg class="court-svg court-lg" viewBox="0 0 358 200" role="img" aria-label="Court with ${players.length} of ${game.playersNeeded} spots taken"><rect class="c-fill" width="358" height="200" rx="10"/><rect class="c-ln" x="14" y="14" width="330" height="172"/><line class="c-ln" x1="14" y1="27" x2="344" y2="27"/><line class="c-ln" x1="14" y1="173" x2="344" y2="173"/><line class="c-ln" x1="33" y1="14" x2="33" y2="186"/><line class="c-ln" x1="325" y1="14" x2="325" y2="186"/><line class="c-ln" x1="139" y1="14" x2="139" y2="186"/><line class="c-ln" x1="219" y1="14" x2="219" y2="186"/><line class="c-ln" x1="14" y1="100" x2="139" y2="100"/><line class="c-ln" x1="219" y1="100" x2="344" y2="100"/><line class="c-ln c-net" x1="179" y1="6" x2="179" y2="194"/><circle class="post" cx="179" cy="6" r="4"/><circle class="post" cx="179" cy="194" r="4"/>${dots}</svg>`;
 }
 
-const SKILL_BARS = { beginner: 1, intermediate: 2, advanced: 3 };
 const SKILL_WORD = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
-function skillMeter(skill) {
-  const n = SKILL_BARS[skill] || 0;
-  const rects = [[4, 14, 6], [10, 10, 10], [16, 5, 15]]
-    .map(([x, y, h], i) => `<rect class="${i < n ? 'bar-on' : 'bar-off'}" x="${x}" y="${y}" width="4" height="${h}" rx="1"/>`)
-    .join('');
-  return `<svg class="skill-meter inline-block align-[-2px]" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">${rects}</svg>`;
-}
+// A level's colour dot on the filter chips and game cards: green, yellow, red.
+const SKILL_DOT = { beginner: 'bg-accent', intermediate: 'bg-shuttle', advanced: 'bg-danger' };
+const levelDot = (skill) => `<span class="level-dot ${SKILL_DOT[skill] || 'bg-line'}" aria-hidden="true"></span>`;
 const ICONS = {
   plus: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   star: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   chev: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
   back: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   more: '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  pin: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
   mark: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="18" r="3"/><path d="M9.5 16.5 6 4h12l-3.5 12.5"/><path d="M10 4l1 12"/><path d="M14 4l-1 12"/><path d="M7.2 8.5h9.6"/></svg>',
 };
 
@@ -178,11 +169,29 @@ async function api(path, opts = {}) {
 
 // ── State ─────────────────────────────────────────────────────────────────
 const FILTERS = ['all', 'beginner', 'intermediate', 'advanced'];
+// Quick filters on when a game starts, in the viewer's own zone. One at a
+// time; tapping the selected one clears it. Not remembered between visits.
+const WHEN = [['today', 'Today'], ['weekend', 'Weekend'], ['soon', 'Next 24 hours']];
+function matchesWhen(g, when) {
+  if (!when) return true;
+  const start = new Date(g.startsAt);
+  const t = now();
+  if (when === 'soon') return start.getTime() - t.getTime() <= 24 * 3600000;
+  const n = daysBetween(t, start);
+  if (when === 'today') return n === 0;
+  // This weekend: today and tomorrow on a Saturday, today on a Sunday, the
+  // coming Saturday and Sunday on any other day.
+  const dow = t.getDay();
+  if (dow === 0) return n === 0;
+  const sat = 6 - dow;
+  return n === sat || n === sat + 1;
+}
 const state = {
   me: null,
   demo: false,
   home: { status: 'loading', data: null }, // loading | error | ready
   filter: FILTERS.includes(localStorage.getItem('fap.filter')) ? localStorage.getItem('fap.filter') : 'all',
+  when: null, // a WHEN key, or null for any day
   games: new Map(), // id -> {status, data} for game screens
 };
 
@@ -199,13 +208,11 @@ function go(hash, type) {
 }
 
 // ── The Games screen ──────────────────────────────────────────────────────
-function metaLine(g, opts) {
-  const bits = [];
-  if (g.cancelled) bits.push('<span class="font-medium">Cancelled</span>');
-  else if (opts.playing) bits.push('<span class="font-medium">Playing now</span>');
-  else if (g.playerCount >= g.playersNeeded) bits.push('<span class="font-medium">Full</span>');
-  else if (opts.openFee) bits.push(`<span>${g.fee === 0 ? 'Free' : `${esc(amount(g.shareFull))} each when full`}</span>`);
-  return `<p class="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-small tabular-nums"><span class="inline-flex items-center gap-1">${skillMeter(g.skill)}${SKILL_WORD[g.skill]}</span><span>${g.playerCount} of ${g.playersNeeded} players</span>${bits.join('')}</p>`;
+function statusText(g, opts) {
+  if (g.cancelled) return 'Cancelled';
+  if (opts.playing) return 'Playing now';
+  if (g.playerCount >= g.playersNeeded) return 'Full';
+  return '';
 }
 function moneyStrip(g) {
   if (g.fee === 0) return '';
@@ -218,28 +225,52 @@ function moneyStrip(g) {
     right = g.viewerPaid ? "You've paid" : `Pay ${esc(g.organizer.username)} ${esc(amount(g.shareNow))}`;
   }
   const cls = right === "You've paid" || right === 'All paid' ? 'text-accent font-medium' : 'text-due font-medium';
-  return `<div class="col-span-2 flex justify-between gap-2 border-t border-line pt-2 text-small"><span>${left}</span><span class="${cls}">${right}</span></div>`;
+  return `<div class="flex justify-between gap-2 border-t border-line pt-2 text-small"><span>${left}</span><span class="${cls}">${right}</span></div>`;
 }
 function gameCard(g, kind) {
   const playing = kind === 'mine' && !g.cancelled
     && new Date(g.startsAt).getTime() <= now().getTime();
+  const status = statusText(g, { playing });
+  const open = g.playersNeeded - g.playerCount;
   const strip = kind === 'mine' ? moneyStrip(g) : '';
-  return `<button class="game-card" data-game="${g.id}">
-    ${courtSmall(g.playersNeeded, g.playerCount, g.viewerSpot)}
-    <div class="min-w-0">
-      <p class="truncate text-body font-semibold leading-[22px]">${esc(g.venue)}</p>
-      <p class="text-small text-muted tabular-nums">${esc(whenLine(new Date(g.startsAt), new Date(g.endsAt), kind === 'mine'))}</p>
-      ${metaLine(g, { playing, openFee: kind === 'open' })}
+  // Your games aren't grouped under day headings, so their card names the day.
+  const day = kind === 'mine' ? dayHeading(new Date(g.startsAt)) : '';
+  const fee = kind === 'open'
+    ? `<p class="text-small text-muted tabular-nums">${g.fee === 0 ? 'Free' : `${esc(amount(g.shareFull))} each when full`}</p>`
+    : '';
+  const join = kind === 'open' && open > 0 && !g.cancelled
+    ? `<button class="btn-primary flex-none px-5" data-join-game="${g.id}" aria-label="Join the game at ${esc(g.venue)}">Join</button>`
+    : '';
+  return `<article class="game-card" data-game="${g.id}">
+    <div class="flex items-start gap-3">
+      <button class="min-w-0 flex-1 text-left" data-open data-game="${g.id}">
+        ${day ? `<span class="block text-small font-medium text-muted">${esc(day)}</span>` : ''}
+        <span class="block font-display text-heading tabular-nums">${esc(timeRange(new Date(g.startsAt), new Date(g.endsAt)))}</span>
+        <span class="mt-0.5 flex items-center gap-1.5 text-body"><span class="flex-none text-muted">${ICONS.pin}</span><span class="truncate">${esc(g.venue)}</span></span>
+      </button>
+      ${courtSmall(g.playersNeeded, g.playerCount, g.viewerSpot)}
+    </div>
+    <div class="flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-small tabular-nums">
+          <span class="inline-flex items-center gap-1.5 font-medium">${levelDot(g.skill)}${SKILL_WORD[g.skill]}</span>
+          <span>${g.playerCount} of ${g.playersNeeded} filled</span>
+          ${status ? `<span class="font-medium">${status}</span>` : ''}
+        </p>
+        ${fee}
+      </div>
+      ${join}
     </div>
     ${strip}
-  </button>`;
+  </article>`;
 }
 function skeletons(n) {
   let out = '';
   for (let i = 0; i < n; i++) {
-    out += `<div class="grid grid-cols-[72px_1fr] gap-3 rounded-xl bg-raised p-3" aria-hidden="true">
-      <div class="skeleton h-[44px] w-[72px]"></div>
-      <div class="flex flex-col gap-2 pt-0.5"><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-4 w-1/2"></div></div>
+    out += `<div class="flex flex-col gap-3 rounded-xl bg-raised p-3" aria-hidden="true">
+      <div class="flex items-start gap-3"><div class="flex flex-1 flex-col gap-2 pt-0.5"><div class="skeleton h-5 w-1/2"></div><div class="skeleton h-4 w-3/4"></div></div>
+      <div class="skeleton h-[44px] w-[72px]"></div></div>
+      <div class="flex items-center justify-between"><div class="skeleton h-4 w-1/2"></div><div class="skeleton h-11 w-20 rounded-lg"></div></div>
     </div>`;
   }
   return out;
@@ -263,12 +294,16 @@ const EMPTY_ART = `<svg class="mb-2 text-accent" width="120" height="96" viewBox
 function renderHome() {
   const s = state.home;
   const d = s.status === 'ready' ? s.data : null;
-  const open = d ? d.open.filter((g) => state.filter === 'all' || g.skill === state.filter) : [];
+  const open = d ? d.open.filter((g) => (state.filter === 'all' || g.skill === state.filter) && matchesWhen(g, state.when)) : [];
   // The empty Games list carries its own New game button; show one at a time.
-  const emptyOpen = !!d && open.length === 0;
-  let html = `<header class="flex h-16 items-center justify-between">
-    <div class="flex items-center gap-2 font-display text-heading text-fg"><span class="text-accent">${ICONS.mark}</span>Find a playmate</div>
-    ${emptyOpen ? '' : `<button class="btn-primary" data-go="#/new">${ICONS.plus}New game</button>`}
+  const emptyOpen = !!d && (d.open.length === 0 || (open.length === 0 && !state.when));
+  let html = `<header class="pb-5">
+    <div class="flex h-14 items-center justify-between">
+      <span class="text-accent">${ICONS.mark}</span>
+      ${emptyOpen ? '' : `<button class="btn-secondary" data-go="#/new">${ICONS.plus}New game</button>`}
+    </div>
+    <h1 class="mt-1 font-display text-title text-fg">Find a playmate</h1>
+    <p class="mt-1 text-body text-muted">Find players by level and location</p>
   </header>`;
   if (state.demo) {
     html += '<p class="mb-5 rounded-lg bg-raised px-3 py-2 text-small text-muted">Staging demo: the games and players below are made up.</p>';
@@ -299,10 +334,19 @@ function renderHome() {
       + '</ul>';
   }
   html += '<h2 class="section-label">Open games</h2>';
-  html += `<div class="seg mb-4" role="group" aria-label="Skill level">`
-    + FILTERS.map((f) => `<button aria-pressed="${state.filter === f}" data-filter="${f}">${f === 'all' ? 'All' : SKILL_WORD[f]}</button>`).join('')
+  html += `<div class="chip-row mb-2" role="group" aria-label="Skill level">`
+    + FILTERS.map((f) => `<button class="chip" aria-pressed="${state.filter === f}" data-filter="${f}">${f === 'all' ? '' : levelDot(f)}${f === 'all' ? 'All' : SKILL_WORD[f]}</button>`).join('')
     + '</div>';
-  if (emptyOpen) {
+  html += `<div class="chip-row mb-4" role="group" aria-label="When">`
+    + WHEN.map(([k, label]) => `<button class="chip" aria-pressed="${state.when === k}" data-when="${k}">${label}</button>`).join('')
+    + '</div>';
+  if (open.length === 0 && state.when && d.open.length > 0) {
+    const whenWords = { today: 'today', weekend: 'this weekend', soon: 'in the next 24 hours' };
+    const level = state.filter === 'all' ? '' : `${SKILL_WORD[state.filter].toLowerCase()} `;
+    html += `<div class="state-empty" data-list="open"><p class="text-body font-medium">No ${esc(level)}games open ${whenWords[state.when]}</p>
+      <p class="text-small text-muted">Try another day or level.</p>
+      <button class="btn-secondary mt-2" data-clear-filters>Show all games</button></div>`;
+  } else if (emptyOpen) {
     const level = state.filter === 'all' ? '' : SKILL_WORD[state.filter].toLowerCase();
     html += `<div class="state-empty" data-list="open" data-empty="${esc(state.filter)}">${EMPTY_ART}
       <p class="text-body font-medium">${level ? `No ${esc(level)} games yet` : 'No open games yet'}</p>
@@ -379,7 +423,7 @@ function renderGameScreen(detail) {
   }
   html += `<h1 class="mt-1 font-display text-title font-bold leading-9">${esc(g.venue)}</h1>
     <p class="mt-1 text-body tabular-nums">${esc(fullWhen(startsAt, endsAt))}</p>
-    <p class="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-small"><span class="inline-flex items-center gap-1">${skillMeter(g.skill)}${SKILL_WORD[g.skill]}</span><span>Organized by ${isOrganizer ? 'you' : esc(g.organizer.username)}</span></p>
+    <p class="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-small"><span class="inline-flex items-center gap-1.5">${levelDot(g.skill)}${SKILL_WORD[g.skill]}</span><span>Organized by ${isOrganizer ? 'you' : esc(g.organizer.username)}</span></p>
     <figure class="mb-2 mt-4">${courtBig(g, players)}</figure>
     <p class="mb-6 text-small text-muted tabular-nums">${
       detail.state === 'cancelled' ? `${g.playerCount} of ${g.playersNeeded} players`
@@ -490,6 +534,22 @@ async function doJoin(id) {
     else if (err.status !== 401) toast("Couldn't join. Try again.");
     loadGame(id);
   }
+}
+// Join straight from a card on the Games screen; the game then moves up to
+// Your games, where its money strip says what to pay.
+async function joinFromList(id, btn) {
+  btn.disabled = true;
+  try {
+    await api(`/api/games/${id}/join`, { method: 'POST' });
+    toast("You're in");
+    state.games.delete(id);
+  } catch (err) {
+    if (err.code === 'game_full') toast('This game just filled up');
+    else if (err.code === 'game_started') toast('This game has already started');
+    else if (err.status !== 401) toast("Couldn't join. Try again.");
+  }
+  state.home.data = null;
+  if ((location.hash || '#/') === '#/') loadHome();
 }
 async function doLeave(id) {
   try {
@@ -810,6 +870,8 @@ document.addEventListener('click', (e) => {
   if (retry) { state.home.data = null; loadHome(); return; }
   const retryGame = e.target.closest('[data-retry-game]');
   if (retryGame) { state.games.delete(Number(retryGame.dataset.retryGame)); loadGame(Number(retryGame.dataset.retryGame)); return; }
+  const joinGame = e.target.closest('[data-join-game]');
+  if (joinGame) { joinFromList(Number(joinGame.dataset.joinGame), joinGame); return; }
   const card = e.target.closest('[data-game]');
   if (card) { go(`#/game/${card.dataset.game}`); return; }
   const filter = e.target.closest('[data-filter]');
@@ -817,6 +879,19 @@ document.addEventListener('click', (e) => {
     state.filter = filter.dataset.filter;
     localStorage.setItem('fap.filter', state.filter);
     renderHome(); // the filter switches instantly
+    return;
+  }
+  const when = e.target.closest('[data-when]');
+  if (when) {
+    state.when = state.when === when.dataset.when ? null : when.dataset.when;
+    renderHome();
+    return;
+  }
+  if (e.target.closest('[data-clear-filters]')) {
+    state.filter = 'all';
+    state.when = null;
+    localStorage.setItem('fap.filter', state.filter);
+    renderHome();
   }
 });
 

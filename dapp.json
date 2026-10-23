@@ -29,6 +29,18 @@
       "allowConsoleErrors": true
     },
     {
+      "name": "Level and day filter chips",
+      "path": "/?demo=1",
+      "expectSelector": "#app:has(.chip[data-filter=\"advanced\"] .level-dot.bg-danger):has(.chip[data-when=\"weekend\"])",
+      "allowConsoleErrors": true
+    },
+    {
+      "name": "Open game cards show Join",
+      "path": "/?demo=1",
+      "expectSelector": "[data-list=\"open\"] .game-card [data-join-game]",
+      "allowConsoleErrors": true
+    },
+    {
       "name": "Games screen, plain",
       "path": "/",
       "expectSelector": "[data-list=\"open\"]",

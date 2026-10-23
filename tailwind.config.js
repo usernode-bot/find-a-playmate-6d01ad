@@ -60,6 +60,8 @@ module.exports = {
         danger: token('danger'),
         'on-danger': token('on-danger'),
         focus: token('focus'), // the keyboard focus ring
+        chip: token('chip'), // a selected filter chip
+        'on-chip': token('on-chip'), // text on a selected chip
       },
       // Headings (the app name, a game's venue) use the system rounded face
       // where it exists; everything else the system face.
